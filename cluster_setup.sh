@@ -23,6 +23,14 @@ cleanup_docker_containers() {
   docker rm $(docker ps -aq)
 }
 
+print_consul_webui_endpoint() {
+  echo "Consul Cluster Web UI URL :"
+  echo "---------------------------"
+  echo "http://$(docker-machine ip consul-server-01):8500/ui"
+  echo "http://$(docker-machine ip consul-server-02):8500/ui"
+  echo "http://$(docker-machine ip consul-server-03):8500/ui"
+}
+
 create_consul_cluster
 create_consul_agents
 # Start Consul Docker containers on the created nodes

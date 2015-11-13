@@ -2,11 +2,18 @@
 
 #### Pre-Requisite
 
-- docker-machine (Mac OS : brew install docker-machine)
+- docker-machine ( Mac OS : brew install docker-machine )
+- docker ( Mac OS :  brew install docker )
 
 #### Running the script
 
+Shell script
+
 ./cluster_setup.sh
+
+Ansible
+
+ansible-playbook --private-key /Users/kmuralidharan/.docker/machine/machines/consul-agent-01/id_rsa -u docker -i hosts -vvv test.yml
 
 #### TODO
 

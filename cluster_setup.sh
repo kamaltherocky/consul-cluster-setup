@@ -50,10 +50,7 @@ function create_and_configure_host() {
 
 function create_consul_cluster() {
   # Consul Server Cluster using docker machine
-  INDEX_START=1
-  INDEX_FINISH=$CONSUL_CLUSTER_SIZE
-  SERVER_NAME=""
-  for i in $(eval echo "{$INDEX_START..$INDEX_FINISH}")
+  for i in $(eval echo "{1..$CONSUL_CLUSTER_SIZE}")
   do
     SERVER_NAME="consul-server-0$i"
   	create_and_configure_host $SERVER_NAME
@@ -63,11 +60,7 @@ function create_consul_cluster() {
 
 function create_consul_agents() {
   # Consul Agents using docker macine
-  # Consul Server Cluster using docker machine
-  INDEX_START=1
-  INDEX_FINISH=$CONSUL_AGENTS
-  SERVER_NAME=""
-  for i in $(eval echo "{$INDEX_START..$INDEX_FINISH}")
+  for i in $(eval echo "{1..$CONSUL_AGENTS}")
   do
     SERVER_NAME="consul-agent-0$i"
   	create_and_configure_host $SERVER_NAME

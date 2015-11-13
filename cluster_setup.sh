@@ -42,6 +42,8 @@ function create_and_configure_host() {
   docker-machine start $1
   # Install Python in Boot2Docker VM
   docker-machine ssh $1 "tce-load -w -i python.tcz"
+  # add python symbolic link in /usr/bin/python as ansible looks at that location
+  docker-machine ssh $1 "sudo ln -s /usr/local/bin/python /usr/bin/python"
   # Install pip and docker-py in boot2docker VM
   docker-machine ssh $1 "rm -rf get-pip.py && wget https://bootstrap.pypa.io/get-pip.py && sudo python get-pip.py && sudo pip install docker-py"
 }

@@ -1,17 +1,39 @@
 #! /bin/bash
 
-function create_consul_cluster() {
-  # Consul Server Cluster using docker macine
-  create_and_configure_host "consul-server-01"
-  create_and_configure_host "consul-server-02"
-  create_and_configure_host "consul-server-03"
+##### Global Variables
+CONSUL_CLUSTER_SIZE=3
+CONSUL_AGENTS=2
+
+#### Functions
+
+function cleanup_docker_containers() {
+  # Kill and remove containers on the node
+  if [ $(docker ps -q | wc -l) > 0 ]; then
+    docker kill $(docker ps -q)
+  fi
+
+  if [ $(docker ps -aq | wc -l) > 0 ]; then
+    docker rm $(docker ps -aq)
+  fi
 }
 
-function create_consul_agents() {
-  # Consul Agents using docker macine
-  create_and_configure_host "consul-agent-01"
-  create_and_configure_host "consul-agent-02"
+function run_consul_server() {
+  eval $(docker-machine env $1)
+  cleanup_docker_containers
+  if [ "$2" = "1" ]; then
+    docker run -d --net host --name=$1 gliderlabs/consul-server -advertise $(docker-machine ip $1) -bootstrap-expect=3
+  else
+    docker run -d --net host --name=$1 gliderlabs/consul-server -advertise $(docker-machine ip $1) -join $(docker-machine ip consul-server-01)
+  fi
+
 }
+
+function run_consul_agent() {
+  eval $(docker-machine env $1)
+  cleanup_docker_containers
+  docker run -d --net host --name=$1 gliderlabs/consul-agent -advertise $(docker-machine ip $1) -join $(docker-machine ip consul-server-01)
+}
+
 
 function create_and_configure_host() {
   # create a node using docker-machine
@@ -24,10 +46,31 @@ function create_and_configure_host() {
   docker-machine ssh $1 "rm -rf get-pip.py && wget https://bootstrap.pypa.io/get-pip.py && sudo python get-pip.py && sudo pip install docker-py"
 }
 
-function cleanup_docker_containers() {
-  # Kill and remove containers on the node
-  docker kill $(docker ps -q)
-  docker rm $(docker ps -aq)
+function create_consul_cluster() {
+  # Consul Server Cluster using docker machine
+  INDEX_START=1
+  INDEX_FINISH=$CONSUL_CLUSTER_SIZE
+  SERVER_NAME=""
+  for i in $(eval echo "{$INDEX_START..$INDEX_FINISH}")
+  do
+    SERVER_NAME="consul-server-0$i"
+  	create_and_configure_host $SERVER_NAME
+    run_consul_server $SERVER_NAME "$i"
+  done
+}
+
+function create_consul_agents() {
+  # Consul Agents using docker macine
+  # Consul Server Cluster using docker machine
+  INDEX_START=1
+  INDEX_FINISH=$CONSUL_AGENTS
+  SERVER_NAME=""
+  for i in $(eval echo "{$INDEX_START..$INDEX_FINISH}")
+  do
+    SERVER_NAME="consul-agent-0$i"
+  	create_and_configure_host $SERVER_NAME
+    run_consul_agent $SERVER_NAME
+  done
 }
 
 function print_consul_webui_endpoint() {
@@ -38,37 +81,8 @@ function print_consul_webui_endpoint() {
   echo "http://$(docker-machine ip consul-server-03):8500/ui"
 }
 
-# docker-machine kill $(docker-machine ls --filter name="consul*" -q)
 
+##### MAIN SCRIPT #############
 create_consul_cluster
 create_consul_agents
-# Start Consul Docker containers on the created nodes
-# Bootstrap Consul Server
-eval $(docker-machine env consul-server-01)
-cleanup_docker_containers
-docker run -d --net host --name=consul-server-01 gliderlabs/consul-server -advertise $(docker-machine ip consul-server-01) -bootstrap-expect=3
-
-eval $(docker-machine env consul-server-02)
-cleanup_docker_containers
-docker run -d --net host --name=consul-server-02 gliderlabs/consul-server -advertise $(docker-machine ip consul-server-02) -join $(docker-machine ip consul-server-01)
-
-eval $(docker-machine env consul-server-03)
-cleanup_docker_containers
-docker run -d --net host --name=consul-server-03 gliderlabs/consul-server -advertise $(docker-machine ip consul-server-03) -join $(docker-machine ip consul-server-01)
-
-# Stop the Bootstrap and Join the cluster as Normal Server
-# Commented out the rejoining of server without bootstrap. Without bootstrap the recovery of the cluster after outage is not possible
-#eval $(docker-machine env consul-server-01)
-#cleanup_docker_containers
-#docker run -d --net host gliderlabs/consul-server -advertise $(docker-machine ip consul-server-01)  -join $(docker-machine ip consul-server-02)
-
-# Start Consul Agent and Join the Consul Cluster
-eval $(docker-machine env consul-agent-01)
-cleanup_docker_containers
-docker run -d --net host --name=consul-agent-01 gliderlabs/consul-agent -advertise $(docker-machine ip consul-agent-01) -join $(docker-machine ip consul-server-01)
-
-eval $(docker-machine env consul-agent-02)
-cleanup_docker_containers
-docker run -d --net host --name=consul-agent-02 gliderlabs/consul-agent -advertise $(docker-machine ip consul-agent-02) -join $(docker-machine ip consul-server-01)
-
 print_consul_webui_endpoint
